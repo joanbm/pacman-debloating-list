@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Generates a list of all packages except the ones in base and base-devel
+PKGS_EXCEPT_BASE=`comm -23 <(pacman -Qeq | sort) <(pacman -Qgq base base-devel | sort)`
+
+# Show the remaining packages in a table with name, groups and description
+column -s"|" -t <(expac -HM '%n|%G|%10d' $PKGS_EXCEPT_BASE)
