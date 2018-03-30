@@ -14,7 +14,7 @@ Run in a terminal window:
 curl https://raw.githubusercontent.com/joanbm/pacman-debloating-list/master/pacman-debloating-list --output pacman-debloating-list
 # If you want to verify the contents of the script for malicious code, here's your last chance...
 chmod +x pacman-debloating-list
-sudo mv pacman-debloating-list /usr/bin/pacman-debloating-list
+sudo mv pacman-debloating-list /usr/bin/pacman-debloating-list # Or run as root with if you don't have sudo
 ```
 
 # Usage
