@@ -17,13 +17,7 @@ If you want to use it one time, just copy and paste the contents of the file `pa
 
 # Installation
 
-To install it permanently, run in a terminal window:
-```
-curl https://raw.githubusercontent.com/joanbm/pacman-debloating-list/master/pacman-debloating-list --output pacman-debloating-list
-# If you want to verify the contents of the script for malicious code, here's your last chance...
-chmod +x pacman-debloating-list
-sudo mv pacman-debloating-list /usr/bin/pacman-debloating-list # Or run as root with if you don't have sudo
-```
+To install it permanently, you can use the `PKGBUILD` attached to any of the releases in the releases page. Alternatively, you can install it manually by downloading `pacman-debloating-list` to `/usr/bin` (and giving it executable permissions through `chmod +x`).
 
 Then, run the following command in a terminal window to execute it whenever you want:
 ```pacman-debloating-list```
