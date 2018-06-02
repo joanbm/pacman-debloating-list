@@ -1,7 +1,20 @@
 #!/bin/bash
+set -e
 
-# Generates a list of all packages except the ones in base and base-devel
-PKGS_EXCEPT_BASE=`comm -23 <(pacman -Qeq | sort) <(pacman -Qgq base base-devel | sort)`
+# Figure out the groups where all the packages are installed
+EXPLICIT_PKGS=$(expac "%w %n" | awk '$1 == "explicit" {print $2}')
+GROUPS_CONTAINING_EXPLICIT_PKG=$(expac -l"\n" "%G" $EXPLICIT_PKGS | sort | uniq)
+GROUPS_WITH_ALL_PKGS_EXPLICIT=$(comm -12 \
+	<(expac -S -l"\n" "%G" -g $GROUPS_CONTAINING_EXPLICIT_PKG | sort | uniq -c | sort) \
+	<(expac -l"\n" "%G" -g $GROUPS_CONTAINING_EXPLICIT_PKG | sort | uniq -c | sort) \
+	| awk '{print $NF}' | sort)
+
+# Figure out the packages installed explicitly that are NOT in the list of groups with all packages installed
+EXPLICIT_PKGS_IN_NO_OR_INCOMPLETE_GROUP=$(comm -23 \
+	<(tr ' ' '\n' <<< $EXPLICIT_PKGS | sort) \
+	<(expac "%n" -g $GROUPS_WITH_ALL_PKGS_EXPLICIT | sort))
 
 # Show the remaining packages in a table with name, groups and description
-column -s"|" -t <(expac -HM '%n|%G|%10d' $PKGS_EXCEPT_BASE)
+column -s"|" -t \
+    <(for G in $GROUPS_WITH_ALL_PKGS_EXPLICIT; do echo "(ALL)|$G|(All packages in the group are installed)"; done) \
+    <(expac -HM '%n|%G|%10d' $EXPLICIT_PKGS_IN_NO_OR_INCOMPLETE_GROUP)
