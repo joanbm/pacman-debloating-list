@@ -4,10 +4,15 @@ set -e
 # Figure out the groups where all the packages are installed
 EXPLICIT_PKGS=$(expac "%w %n" | awk '$1 == "explicit" {print $2}')
 GROUPS_CONTAINING_EXPLICIT_PKG=$(expac -l"\n" "%G" $EXPLICIT_PKGS | sort | uniq)
-GROUPS_WITH_ALL_PKGS_EXPLICIT=$(comm -12 \
-	<(expac -S -l"\n" "%G %n" -g $GROUPS_CONTAINING_EXPLICIT_PKG | sort | uniq | cut -d" " -f1 | sort | uniq -c | sort) \
-	<(expac -l"\n" "%G %n" -g $GROUPS_CONTAINING_EXPLICIT_PKG | sort | uniq | cut -d" " -f1 | sort | uniq -c | sort) \
-	| awk '{print $NF}' | sort)
+
+GROUPS_WITH_ALL_PKGS_EXPLICIT=""
+for g in $GROUPS_CONTAINING_EXPLICIT_PKG; do
+	TOTAL_PKGS_AVAILABLE=$(expac -S -l"\n" "%n" -g $g | wc -l)
+	TOTAL_PKGS_INSTALLED=$(expac -l"\n" "%n %w" -g $g | grep explicit$ | cut -f1 -d" " | wc -l)
+	if [[ $TOTAL_PKGS_AVAILABLE == $TOTAL_PKGS_INSTALLED ]]; then
+		GROUPS_WITH_ALL_PKGS_EXPLICIT="$GROUPS_WITH_ALL_PKGS_EXPLICIT $g"
+	fi
+done
 
 # Figure out the packages installed explicitly that are NOT in the list of groups with all packages installed
 EXPLICIT_PKGS_IN_NO_OR_INCOMPLETE_GROUP=$(comm -23 \
