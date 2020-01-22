@@ -1,25 +1,30 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+# requires: expac
+set -euo pipefail
 
 # Figure out the groups where all the packages are installed
-EXPLICIT_PKGS=$(expac "%w %n" | awk '$1 == "explicit" {print $2}')
-GROUPS_CONTAINING_EXPLICIT_PKG=$(expac -l"\n" "%G" $EXPLICIT_PKGS | sort | uniq)
+# (Package groups of packages not in SyncDB, normally AUR packages, are ignored
+#  since full AUR database information can not be obtained by expac)
+EXPLICIT_PKGS=$(expac "%w %n" | awk '$1 == "explicit" {print $2}' | sort)
+EXPLICIT_PKGS_IN_SYNCDB=$(echo "$EXPLICIT_PKGS" | xargs expac -S "%n" | sort | uniq)
+EXPLICIT_PKGS_NOTIN_SYCNDB=$(comm -23 <(echo "$EXPLICIT_PKGS") <(echo "$EXPLICIT_PKGS_IN_SYNCDB"))
 
+GROUPS_CONTAINING_EXPLICIT_PKG=$(echo "$EXPLICIT_PKGS_IN_SYNCDB" | xargs expac -S -l"\n" "%G" | sort | uniq -c)
 GROUPS_WITH_ALL_PKGS_EXPLICIT=""
-for g in $GROUPS_CONTAINING_EXPLICIT_PKG; do
-	TOTAL_PKGS_AVAILABLE=$(expac -S -l"\n" "%n" -g $g | wc -l)
-	TOTAL_PKGS_INSTALLED=$(expac -l"\n" "%n %w" -g $g | grep explicit$ | cut -f1 -d" " | wc -l)
-	if [[ $TOTAL_PKGS_AVAILABLE == $TOTAL_PKGS_INSTALLED ]]; then
-		GROUPS_WITH_ALL_PKGS_EXPLICIT="$GROUPS_WITH_ALL_PKGS_EXPLICIT $g"
-	fi
-done
+while IFS=' ' read -r TOTAL_PKGS_INSTALLED PKGGROUP; do
+    TOTAL_PKGS_AVAILABLE=$(echo "$PKGGROUP" | xargs expac -S -l"\n" "%n" -g | wc -l)
+    if [[ "$TOTAL_PKGS_AVAILABLE" == "$TOTAL_PKGS_INSTALLED" ]]; then
+        GROUPS_WITH_ALL_PKGS_EXPLICIT="$GROUPS_WITH_ALL_PKGS_EXPLICIT $PKGGROUP"
+    fi
+done <<< "$GROUPS_CONTAINING_EXPLICIT_PKG"
 
 # Figure out the packages installed explicitly that are NOT in the list of groups with all packages installed
 EXPLICIT_PKGS_IN_NO_OR_INCOMPLETE_GROUP=$(comm -23 \
-	<(tr ' ' '\n' <<< $EXPLICIT_PKGS | sort) \
-	<(expac "%n" -g $GROUPS_WITH_ALL_PKGS_EXPLICIT | sort))
+    <(sort <<< "$EXPLICIT_PKGS_IN_SYNCDB") \
+    <(echo "$GROUPS_WITH_ALL_PKGS_EXPLICIT" | xargs expac -S "%n" -g | sort))
+EXPLICIT_PKGS_IN_NO_OR_INCOMPLETE_GROUP=$(sort <<< "$EXPLICIT_PKGS_IN_NO_OR_INCOMPLETE_GROUP"$'\n'"$EXPLICIT_PKGS_NOTIN_SYCNDB")
 
 # Show the remaining packages in a table with name, groups and description
 column -s"|" -t \
     <(for G in $GROUPS_WITH_ALL_PKGS_EXPLICIT; do echo "(ALL)|$G|(All packages in the group are installed)"; done) \
-    <(expac -HM '%n|%G|%10d' $EXPLICIT_PKGS_IN_NO_OR_INCOMPLETE_GROUP)
+    <(echo "$EXPLICIT_PKGS_IN_NO_OR_INCOMPLETE_GROUP" | xargs expac -HM '%n|%G|%10d')
